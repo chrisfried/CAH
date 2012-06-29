@@ -1,0 +1,186 @@
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<Module>
+<!-- Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *	
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License
+-->
+  <ModulePrefs title="Video Feed Selector">
+    <Require feature="rpc"/>
+    <Require feature="views"/>
+  </ModulePrefs>
+  <Content type="html">
+<![CDATA[
+
+<script src="//hangoutsapi.talkgadget.google.com/hangouts/api/hangout.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<style>
+	html { margin:0; padding:0; max-height:100%; height:100%; overflow-y:scroll; }
+	body { background-color:#000; color: #fff; margin:0; padding:10px; max-height:100%; height:100%; overflow-y:scroll;}
+	.cards { list-style:none; margin:0; padding:0; }
+	.card { font-weight:bold; padding:5px; }
+	.white.cards { margin:50px 0 20px; }
+	.white.card {
+		width:225px;
+		background-color:#fff;
+		color:#000;
+		padding:10px 10px 50px;
+		margin-top:-40px; 
+		-webkit-border-radius: 5px;
+		-moz-border-radius: 5px;
+		border-radius: 5px;
+		-webkit-box-shadow:  0px -1px 3px 1px rgba(00, 00, 00, .2);
+		box-shadow:  0px -1px 3px 1px rgba(00, 00, 00, .2);
+		cursor:pointer;
+	}
+	.draw { display:none; }
+</style>
+
+<div class="draw">Draw a Black Card</div>
+<div class="black card"> </div>
+<ul class="hand white cards"> </ul>
+
+<script>
+	
+	// Variables
+	var blackDeck = [];
+	var whiteDeck = [];
+	var playerDeck = [];
+	var handRequiredCards = [];
+	var tableRequiredCards = [];
+		
+	// Animations
+	function animations() {
+		$('.hand .white.card').live({
+			mouseenter:
+				function() {
+					$(this).animate({marginLeft:'20px'}, 100);
+				},
+			mouseleave:
+				function() {
+					$(this).animate({marginLeft:'0'}, 100);
+				}
+		});
+		$('.hand .white.card').live(
+			"click", function() {
+				$(this).animate({marginLeft:'300px'}, 200, function() {
+					$('.hand').hide();
+				});
+				$(this).siblings().animate({marginLeft:'-300px'}, 200);
+			}
+		);
+		$('.draw').live(
+			"click", function() {
+				drawBlackCard();
+				$('.draw').hide();
+			}
+		);
+	}
+	
+	// Shuffle
+	function shuffle(sourceArray) {
+		for (var n = 0; n < sourceArray.length - 1; n++) {
+			var k = n + Math.floor(Math.random() * (sourceArray.length - n));
+			var temp = sourceArray[k];
+			sourceArray[k] = sourceArray[n];
+			sourceArray[n] = temp;
+		}
+	}
+	
+	// Build Deck Query
+	function deckQuery(fusionTable, callbackFunction) {
+		var queryUrlHead = 'https://www.google.com/fusiontables/api/query?sql=';
+		var queryUrlTail = '&jsonCallback=?';
+		var queryurl = encodeURI(queryUrlHead + 'SELECT * FROM ' + fusionTable + queryUrlTail);
+		var jqxhr = $.get(queryurl, callbackFunction, "jsonp");
+	}
+	
+	// Build Black Deck
+	function buildBlackDeck(d) {
+		var data = d.table.rows;
+		var totalCards = data.length;
+		shuffle(data);
+		var initBlackDeck = [];
+		for (i=0;i<totalCards;i++) {
+			initBlackDeck.push(data[i]);
+		}
+		gapi.hangout.data.setValue('blackDeck', JSON.stringify(initBlackDeck));
+	}
+	
+	// Build White Decks
+	function buildWhiteDecks(d) {
+		var data = d.table.rows;
+		var totalCards = data.length;
+		var deckLength = totalCards / 10;
+		shuffle(data);
+		
+		for (i=0;i<10;i++) {
+			var deckStart = deckLength * i;
+			whiteDeck[i] = [];
+			for (j = deckStart;j < deckStart + deckLength;j++) {
+				whiteDeck[i].push(data[j][0]);
+			}
+		}
+		gapi.hangout.data.setValue('playerDeck0', JSON.stringify(whiteDeck[0]));
+		gapi.hangout.data.setValue('playerDeck1', JSON.stringify(whiteDeck[1]));
+		gapi.hangout.data.setValue('playerDeck2', JSON.stringify(whiteDeck[2]));
+		gapi.hangout.data.setValue('playerDeck3', JSON.stringify(whiteDeck[3]));
+		gapi.hangout.data.setValue('playerDeck4', JSON.stringify(whiteDeck[4]));
+		gapi.hangout.data.setValue('playerDeck5', JSON.stringify(whiteDeck[5]));
+		gapi.hangout.data.setValue('playerDeck6', JSON.stringify(whiteDeck[6]));
+		gapi.hangout.data.setValue('playerDeck7', JSON.stringify(whiteDeck[7]));
+		gapi.hangout.data.setValue('playerDeck8', JSON.stringify(whiteDeck[8]));
+		gapi.hangout.data.setValue('playerDeck9', JSON.stringify(whiteDeck[9]));
+	}
+	
+	function drawBlackCard() {
+		blackDeck = JSON.parse(gapi.hangout.data.getValue('blackDeck'));
+		$('.black.card').html('<span value="' + blackDeck[0][1] + '">' + blackDeck[0][0] + '</span>');
+	
+		playerDeck = JSON.parse(gapi.hangout.data.getValue('playerDeck0'));
+		$('.white.cards').html('');
+		for (i=0;i<10;i++) {
+			$('.white.cards').append('<li class="white card" value="' + i + '">' + playerDeck[i] + '</li>');
+		}
+	}
+	
+	// This runs when the gadget is ready
+	function init() {
+		animations();
+		
+		// When API is ready...
+		gapi.hangout.onApiReady.add(
+			function(eventObj) {
+				if (eventObj.isApiReady) {
+					blackTable = '1OrQTlAYdJj4_T8XvClMCC_akyO5CX3MR0WCoIZs';
+					whiteTable = '1VMWq5VKdBB3ZXoPyD-yHKEjVmHqmSy_haXa_v0g';
+					deckQuery(blackTable, buildBlackDeck);
+					deckQuery(whiteTable, buildWhiteDecks);
+					console.log(gapi.hangout.data.getKeys());
+					$('.draw').show();
+				}
+			}
+		);
+		gapi.hangout.onStateChanged.add(
+			function() {
+				gapi.hangout.data.getState();
+			}
+		);
+	}
+	
+	// Wait for gadget to load.
+	gadgets.util.registerOnLoadHandler(init);
+	
+</script>
+
+]]>
+  </Content>
+</Module>
